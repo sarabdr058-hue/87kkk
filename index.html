@@ -60,26 +60,40 @@
 
             <section id="sales" class="tab-content">
                 <div class="card 3d-box">
-                    <p>💵 الدخل اليومي<br>000,000 IQD</p>
+                    <p>💵 الدخل اليومي</p>
+                    <input type="number" id="daily-income-input" placeholder="أدخل الدخل اليومي">
                     <br>
-                    <p>💸 المصروف اليومي<br>000,000 IQD</p>
+                    <p>💸 المصروف اليومي</p>
+                    <input type="number" id="daily-expense-input" placeholder="أدخل المصروف اليومي">
                     <br>
-                    <p>📅 الدخل الأسبوعي<br>000,000 IQD</p>
+                    <p>📦 الدخل الصافي اليومي (الدخل ناقص المصروف):</p>
+                    <p id="daily-net" style="color: green; font-weight: bold;">0 IQD</p>
                     <br>
-                    <p>📆 الدخل الشهري<br>000,000 IQD</p>
+                    <button class="btn 3d-btn" onclick="saveDaily()">✅ حفظ اليومية</button>
+                    <br><hr><br>
+                    
+                    <p>جمع تلقائي للدخل (الشهري)</p>
+                    <input type="number" id="monthly-income-input" placeholder="مجموع الدخل">
                     <br>
-                    <p>➖ ناقص المصروفات الشهرية<br>000,000 IQD</p>
+                    <p>النتيجة الأسبوعية</p>
+                    <input type="number" id="weekly-result-input" placeholder="النتيجة الأسبوعية">
                     <br>
-                    <p>📦 صافي الدخل الشهري<br>000,000 IQD</p>
+                    <p>النتيجة الشهرية</p>
+                    <input type="number" id="monthly-result-input" placeholder="النتيجة الشهرية">
                     <br>
-                    <hr>
+                    <p>المصروفات الشهرية (بضاعة، وغيرها، الخ)</p>
+                    <input type="number" id="monthly-expenses-input" placeholder="المصروفات الشهرية">
                     <br>
-                    <p>📊 نسبة الربح الشهري</p>
-                    <p>✔️ أقل من 25٪</p>
-                    <p>✔️ أكثر من 25٪</p>
-                    <progress value="25" max="100" style="width: 100%; height: 20px;"></progress>
+                    <p>مصروفات ثابتة (إيجار، كهرباء، عمال)</p>
+                    <input type="number" id="fixed-expenses-input" placeholder="المصروفات الثابتة">
+                    <br>
+                    <p>الدخل الشهري مطروح المصروفات:</p>
+                    <p id="monthly-net" style="color: blue; font-weight: bold;">0 IQD</p>
+                    <br>
+                    <p>📊 نسبة الربح الشهري (أكثر أو أقل من 25٪)</p>
+                    <p id="profit-status" style="font-weight: bold;">0%</p>
                     <br><br>
-                    <button class="btn 3d-btn" onclick="alertSuccess('تم الحفظ بنجاح')">✅ حفظ</button>
+                    <button class="btn 3d-btn" onclick="calculateMonthly()">✅ حساب وحفظ النتيجة</button>
                 </div>
             </section>
 
@@ -104,44 +118,47 @@
                     <input type="text" placeholder="الاسم">
                     <input type="text" placeholder="رقم الهاتف">
                     <input type="text" placeholder="العنوان">
-                    <input type="number" placeholder="المبلغ">
+                    <input type="number" id="creditor-amount" placeholder="المبلغ">
                     <input type="text" placeholder="التفاصيل / الملاحظات">
                     <input type="date" placeholder="التاريخ">
+                    <button class="btn 3d-btn" onclick="saveCreditor()">حفظ الدائن</button>
                 </div>
                 <div class="card 3d-box highlight">
-                    <h2>نسبة الدين الكلي</h2>
+                    <h2>مجموع الدين الكلي</h2>
                     <p>(إجمالي مبالغ الدائنين)</p>
+                    <p id="total-creditor" style="font-size: 1.5rem; color: red;">0 IQD</p>
                 </div>
             </section>
 
             <section id="debtor" class="tab-content">
                 <div class="card 3d-box" style="margin-bottom: 20px;">
                     <h2>المدين</h2>
+                    <input type="text" placeholder="الاسم">
                     <input type="text" placeholder="رقم الهاتف">
                     <input type="text" placeholder="العنوان">
-                    <input type="number" placeholder="المبلغ">
+                    <input type="number" id="debtor-amount" placeholder="المبلغ">
                     <input type="text" placeholder="التفاصيل / الملاحظات">
                     <input type="date" placeholder="التاريخ">
+                    <button class="btn 3d-btn" onclick="saveDebtor()">حفظ المدين</button>
                 </div>
                 <div class="card 3d-box highlight">
-                    <h2>نسبة المديونية الكلية</h2>
+                    <h2>مجموع الدين الكلي</h2>
                     <p>(إجمالي مبالغ المدينين)</p>
+                    <p id="total-debtor" style="font-size: 1.5rem; color: green;">0 IQD</p>
                 </div>
             </section>
 
             <section id="comparison" class="tab-content">
                 <div class="card 3d-box">
-                    <h2>مقارنة بين الدائن والمدين</h2>
+                    <h2>مقارنة تلقائي بين الدائن والمدين</h2>
                     <br>
-                    <p>إجمالي الدائن</p>
+                    <p>إجمالي الدائن: <span id="comp-creditor">0</span> IQD</p>
                     <br>
-                    <p>إجمالي المدين</p>
+                    <p>إجمالي المدين: <span id="comp-debtor">0</span> IQD</p>
                     <br>
-                    <p>الفرق بينهما</p>
+                    <p>الفرق بينهما: <span id="comp-diff">0</span> IQD</p>
                     <br>
-                    <p>✔️ لك</p>
-                    <br>
-                    <p>❌ عليك</p>
+                    <p id="comp-status" style="font-size: 1.5rem; font-weight: bold;"></p>
                 </div>
             </section>
         </main>
