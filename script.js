@@ -7,9 +7,9 @@ function checkPIN() {
     if (pin === correctPIN) {
         document.getElementById('login-screen').classList.remove('active');
         document.getElementById('app-screen').classList.add('active');
+        loadAllLists();
         loadDashboardData();
         updateDebtsUI();
-        loadAllLists();
         Swal.fire({
             icon: 'success',
             title: 'أهلاً بك في شهد روز!',
@@ -51,30 +51,47 @@ function switchTab(tabId) {
     }
 }
 
-// ==================== 3. لوحة القيادة والحسابات ====================
+// ==================== 3. لوحة القيادة والحسابات التلقائية ====================
 function loadDashboardData() {
-    let sales = parseFloat(localStorage.getItem('totalSales') || 0);
-    let purchases = parseFloat(localStorage.getItem('totalPurchases') || 0);
-    let expenses = parseFloat(localStorage.getItem('totalExpenses') || 0);
+    // جلب البيانات من القوائم الفعلية لحسابها بدقة وتجنب التراكم الخاطئ
+    let dailySales = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
+    let expList = JSON.parse(localStorage.getItem('expensesList') || '[]');
 
-    let profit = sales - (purchases + expenses);
-    let profitMargin = sales > 0 ? ((profit / sales) * 100).toFixed(1) : 0;
+    // جمع تلقائي للمبيعات والمصروفات
+    let totalSales = dailySales.reduce((sum, item) => sum + parseFloat(item.income || 0), 0);
+    let totalDailyExp = dailySales.reduce((sum, item) => sum + parseFloat(item.expense || 0), 0);
+    let totalPurchases = expList.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
 
-    document.getElementById('monthly-sales').innerText = sales.toLocaleString() + ' IQD';
-    document.getElementById('monthly-purchases').innerText = purchases.toLocaleString() + ' IQD';
-    document.getElementById('daily-expense').innerText = expenses.toLocaleString() + ' IQD';
+    let profit = totalSales - (totalPurchases + totalDailyExp);
+    let profitMargin = totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
+
+    // تحديث الشاشة الرئيسية بالقيم التلقائية
+    document.getElementById('monthly-sales').innerText = totalSales.toLocaleString() + ' IQD';
+    document.getElementById('monthly-purchases').innerText = totalPurchases.toLocaleString() + ' IQD';
+    document.getElementById('daily-income').innerText = totalSales.toLocaleString() + ' IQD';
+    document.getElementById('daily-expense').innerText = totalDailyExp.toLocaleString() + ' IQD';
     
     let marginElement = document.getElementById('profit-margin');
     marginElement.innerText = profitMargin + '%';
 
-    if (profitMargin < 25 && sales > 0) {
+    if (profitMargin < 25 && totalSales > 0) {
         marginElement.style.color = 'red';
     } else {
         marginElement.style.color = '#f28cae';
     }
+
+    // تعبئة حقول الدخل الشهري في قسم المبيعات تلقائياً
+    let monthlyIncomeInput = document.getElementById('monthly-income-input');
+    let monthlyExpensesInput = document.getElementById('monthly-expenses-input');
+    
+    if(monthlyIncomeInput) monthlyIncomeInput.value = totalSales;
+    if(monthlyExpensesInput) monthlyExpensesInput.value = totalPurchases + totalDailyExp;
+
+    // تشغيل دالة حساب النسب بصمت (بدون تنبيه) لتحديث واجهة المبيعات
+    calculateMonthly(false);
 }
 
-// ==================== التعديلات المطلوبة (الدائن والمدين والمصروفات والمبيعات) ====================
+// ==================== القوائم والسجلات ====================
 
 function loadAllLists() {
     renderCreditors();
@@ -93,13 +110,11 @@ function saveCreditor() {
 
     if (!name && amount === 0) return alertError('الرجاء إدخال البيانات المطلوبة');
 
-    let total = parseFloat(localStorage.getItem('totalCreditor') || 0) + amount;
-    localStorage.setItem('totalCreditor', total);
-
     let list = JSON.parse(localStorage.getItem('creditorsList') || '[]');
     list.push({ name, phone, address, amount, details, date });
     localStorage.setItem('creditorsList', JSON.stringify(list));
 
+    // تحديث المجاميع وعرض القائمة
     updateDebtsUI();
     renderCreditors();
 
@@ -110,7 +125,7 @@ function saveCreditor() {
     document.getElementById('cred-details').value = '';
     document.getElementById('cred-date').value = '';
 
-    alertSuccess('تم حفظ الدائن وتصفير الحقول');
+    alertSuccess('تم حفظ الدائن بنجاح');
 }
 
 function renderCreditors() {
@@ -139,13 +154,11 @@ function saveDebtor() {
 
     if (!name && amount === 0) return alertError('الرجاء إدخال البيانات المطلوبة');
 
-    let total = parseFloat(localStorage.getItem('totalDebtor') || 0) + amount;
-    localStorage.setItem('totalDebtor', total);
-
     let list = JSON.parse(localStorage.getItem('debtorsList') || '[]');
     list.push({ name, phone, address, amount, details, date });
     localStorage.setItem('debtorsList', JSON.stringify(list));
 
+    // تحديث المجاميع وعرض القائمة
     updateDebtsUI();
     renderDebtors();
 
@@ -156,7 +169,7 @@ function saveDebtor() {
     document.getElementById('debt-details').value = '';
     document.getElementById('debt-date').value = '';
 
-    alertSuccess('تم حفظ المدين وتصفير الحقول');
+    alertSuccess('تم حفظ المدين بنجاح');
 }
 
 function renderDebtors() {
@@ -188,10 +201,9 @@ function saveExpense() {
     list.push({ type, amount, date, notes, method });
     localStorage.setItem('expensesList', JSON.stringify(list));
 
-    let totalExp = parseFloat(localStorage.getItem('totalExpenses') || 0) + amount;
-    localStorage.setItem('totalExpenses', totalExp);
-
     renderExpenses();
+    // تحديث لوحة القيادة لتشمل المصروف الجديد تلقائياً
+    loadDashboardData(); 
 
     document.getElementById('exp-type').value = '';
     document.getElementById('exp-amount').value = '';
@@ -199,7 +211,7 @@ function saveExpense() {
     document.getElementById('exp-notes').value = '';
     document.getElementById('exp-method').value = '';
 
-    alertSuccess('تم حفظ المصروف وتصفير الحقول');
+    alertSuccess('تم حفظ المصروف بنجاح');
 }
 
 function renderExpenses() {
@@ -220,14 +232,21 @@ function renderExpenses() {
 }
 
 function updateDebtsUI() {
-    let cred = parseFloat(localStorage.getItem('totalCreditor') || 0);
-    let debt = parseFloat(localStorage.getItem('totalDebtor') || 0);
+    // جمع المبالغ من القوائم مباشرة لحل مشكلة الجمع الخاطئ
+    let credList = JSON.parse(localStorage.getItem('creditorsList') || '[]');
+    let debtList = JSON.parse(localStorage.getItem('debtorsList') || '[]');
+
+    let credTotal = credList.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+    let debtTotal = debtList.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
     
+    localStorage.setItem('totalCreditor', credTotal);
+    localStorage.setItem('totalDebtor', debtTotal);
+
     let totalCreditorEl = document.getElementById('total-creditor');
-    if(totalCreditorEl) totalCreditorEl.innerText = cred.toLocaleString() + ' IQD';
+    if(totalCreditorEl) totalCreditorEl.innerText = credTotal.toLocaleString() + ' IQD';
     
     let totalDebtorEl = document.getElementById('total-debtor');
-    if(totalDebtorEl) totalDebtorEl.innerText = debt.toLocaleString() + ' IQD';
+    if(totalDebtorEl) totalDebtorEl.innerText = debtTotal.toLocaleString() + ' IQD';
 }
 
 function compareDebts() {
@@ -260,21 +279,20 @@ function saveDaily() {
     let net = income - expense;
     document.getElementById('daily-net').innerText = net.toLocaleString() + ' IQD';
     
-    let totalIncome = parseFloat(localStorage.getItem('totalIncome') || 0) + income;
-    localStorage.setItem('totalIncome', totalIncome);
-    document.getElementById('monthly-income-input').value = totalIncome;
-
     let list = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
     let date = new Date().toLocaleDateString('ar-IQ');
     list.push({ income, expense, net, date });
     localStorage.setItem('dailySalesList', JSON.stringify(list));
 
     renderDailySales();
+    
+    // تحديث الشاشة الرئيسية والأرقام التلقائية
+    loadDashboardData();
 
     document.getElementById('daily-income-input').value = '';
     document.getElementById('daily-expense-input').value = '';
 
-    alertSuccess('تم حفظ اليومية وتصفير الحقول');
+    alertSuccess('تم حفظ اليومية بنجاح');
 }
 
 function renderDailySales() {
@@ -293,7 +311,7 @@ function renderDailySales() {
     });
 }
 
-function calculateMonthly() {
+function calculateMonthly(showAlert = true) {
     let monthlyIncome = parseFloat(document.getElementById('monthly-income-input').value) || 0;
     let monthlyExp = parseFloat(document.getElementById('monthly-expenses-input').value) || 0;
     let fixedExp = parseFloat(document.getElementById('fixed-expenses-input').value) || 0;
@@ -314,13 +332,9 @@ function calculateMonthly() {
         profitStatus.style.color = 'red';
     }
 
-    document.getElementById('monthly-income-input').value = '';
-    document.getElementById('weekly-result-input').value = '';
-    document.getElementById('monthly-result-input').value = '';
-    document.getElementById('monthly-expenses-input').value = '';
-    document.getElementById('fixed-expenses-input').value = '';
-
-    alertSuccess('تم الحساب والحفظ بنجاح وتصفير الحقول');
+    if(showAlert) {
+        alertSuccess('تم الحساب والحفظ بنجاح');
+    }
 }
 
 // ==================== 4. دوال مساعدة للتنبيهات ====================
