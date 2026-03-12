@@ -110,6 +110,30 @@ input, select {
     font-weight: bold;
 }
 
+/* أزرار التحكم داخل القوائم (تعديل، حذف، تسديد) */
+.action-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.btn-small {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    color: white;
+    font-weight: bold;
+    flex: 1;
+    min-width: 70px;
+}
+
+.btn-edit { background-color: #2196F3; }
+.btn-delete { background-color: #f44336; }
+.btn-pay { background-color: #4caf50; }
+
 /* هيكل التطبيق الجديد */
 #app-screen {
     display: none; 
