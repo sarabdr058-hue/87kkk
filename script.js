@@ -8,6 +8,11 @@ let editingCreditorIndex = -1;
 let editingDebtorIndex = -1;
 let editingExpenseIndex = -1;
 
+// دالة لتنسيق الأرقام بفاصلة الآلاف
+function formatMoney(num) {
+    return Number(num).toLocaleString('en-US');
+}
+
 function checkPIN() {
     const pin = document.getElementById('pin-input').value;
     if (pin === correctPIN) {
@@ -70,10 +75,10 @@ function loadDashboardData() {
     let profit = totalSales - (totalPurchases + totalDailyExp);
     let profitMargin = totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
 
-    document.getElementById('monthly-sales').innerText = totalSales.toLocaleString() + ' IQD';
-    document.getElementById('monthly-purchases').innerText = totalPurchases.toLocaleString() + ' IQD';
-    document.getElementById('daily-income').innerText = totalSales.toLocaleString() + ' IQD';
-    document.getElementById('daily-expense').innerText = totalDailyExp.toLocaleString() + ' IQD';
+    document.getElementById('monthly-sales').innerText = formatMoney(totalSales) + ' IQD';
+    document.getElementById('monthly-purchases').innerText = formatMoney(totalPurchases) + ' IQD';
+    document.getElementById('daily-income').innerText = formatMoney(totalSales) + ' IQD';
+    document.getElementById('daily-expense').innerText = formatMoney(totalDailyExp) + ' IQD';
     
     let marginElement = document.getElementById('profit-margin');
     marginElement.innerText = profitMargin + '%';
@@ -150,12 +155,13 @@ function saveCreditor() {
     let list = JSON.parse(localStorage.getItem('creditorsList') || '[]');
     
     if (editingCreditorIndex > -1) {
-        list[editingCreditorIndex] = { name, phone, address, amount, details, date };
+        let payments = list[editingCreditorIndex].payments || [];
+        list[editingCreditorIndex] = { name, phone, address, amount, details, date, payments };
         editingCreditorIndex = -1;
         document.getElementById('btn-save-creditor').innerText = "حفظ الدائن";
         alertSuccess('تم التعديل بنجاح');
     } else {
-        list.push({ name, phone, address, amount, details, date });
+        list.push({ name, phone, address, amount, details, date, payments: [] });
         alertSuccess('تم حفظ الدائن بنجاح');
     }
     
@@ -176,12 +182,22 @@ function renderCreditors() {
     let container = document.getElementById('creditor-list');
     container.innerHTML = '';
     list.forEach((item, index) => {
+        let paymentsHTML = '';
+        if (item.payments && item.payments.length > 0) {
+            paymentsHTML = '<div class="payments-history"><strong>تفاصيل التسديد (الواصل):</strong>';
+            item.payments.forEach(p => {
+                paymentsHTML += `<div>- واصل ${formatMoney(p.amount)} IQD بتاريخ ${p.date}</div>`;
+            });
+            paymentsHTML += '</div>';
+        }
+
         container.innerHTML += `
             <div class="list-item">
                 <p><strong>الاسم:</strong> ${item.name}</p>
-                <p><strong>المبلغ:</strong> ${item.amount} IQD</p>
+                <p><strong>المبلغ المتبقي:</strong> ${formatMoney(item.amount)} IQD</p>
                 <p><strong>التاريخ:</strong> ${item.date}</p>
                 <p><strong>التفاصيل:</strong> ${item.details}</p>
+                ${paymentsHTML}
                 <div class="action-btns">
                     <button class="btn-small btn-pay" onclick="payCreditor(${index})">تسديد (الواصل)</button>
                     <button class="btn-small btn-edit" onclick="editCreditor(${index})">تعديل</button>
@@ -230,6 +246,16 @@ async function payCreditor(index) {
         let deduct = parseFloat(amount);
         list[index].amount -= deduct;
         if (list[index].amount < 0) list[index].amount = 0;
+        
+        if (!list[index].payments) {
+            list[index].payments = [];
+        }
+        let today = new Date().toLocaleDateString('ar-IQ');
+        list[index].payments.push({
+            amount: deduct,
+            date: today
+        });
+
         localStorage.setItem('creditorsList', JSON.stringify(list));
         renderCreditors();
         updateDebtsUI();
@@ -251,12 +277,13 @@ function saveDebtor() {
     let list = JSON.parse(localStorage.getItem('debtorsList') || '[]');
     
     if (editingDebtorIndex > -1) {
-        list[editingDebtorIndex] = { name, phone, address, amount, details, date };
+        let payments = list[editingDebtorIndex].payments || [];
+        list[editingDebtorIndex] = { name, phone, address, amount, details, date, payments };
         editingDebtorIndex = -1;
         document.getElementById('btn-save-debtor').innerText = "حفظ المدين";
         alertSuccess('تم التعديل بنجاح');
     } else {
-        list.push({ name, phone, address, amount, details, date });
+        list.push({ name, phone, address, amount, details, date, payments: [] });
         alertSuccess('تم حفظ المدين بنجاح');
     }
 
@@ -277,12 +304,22 @@ function renderDebtors() {
     let container = document.getElementById('debtor-list');
     container.innerHTML = '';
     list.forEach((item, index) => {
+        let paymentsHTML = '';
+        if (item.payments && item.payments.length > 0) {
+            paymentsHTML = '<div class="payments-history"><strong>تفاصيل التسديد (الواصل):</strong>';
+            item.payments.forEach(p => {
+                paymentsHTML += `<div>- واصل ${formatMoney(p.amount)} IQD بتاريخ ${p.date}</div>`;
+            });
+            paymentsHTML += '</div>';
+        }
+
         container.innerHTML += `
             <div class="list-item">
                 <p><strong>الاسم:</strong> ${item.name}</p>
-                <p><strong>المبلغ:</strong> ${item.amount} IQD</p>
+                <p><strong>المبلغ المتبقي:</strong> ${formatMoney(item.amount)} IQD</p>
                 <p><strong>التاريخ:</strong> ${item.date}</p>
                 <p><strong>التفاصيل:</strong> ${item.details}</p>
+                ${paymentsHTML}
                 <div class="action-btns">
                     <button class="btn-small btn-pay" onclick="payDebtor(${index})">تسديد (الواصل)</button>
                     <button class="btn-small btn-edit" onclick="editDebtor(${index})">تعديل</button>
@@ -331,6 +368,16 @@ async function payDebtor(index) {
         let deduct = parseFloat(amount);
         list[index].amount -= deduct;
         if (list[index].amount < 0) list[index].amount = 0;
+        
+        if (!list[index].payments) {
+            list[index].payments = [];
+        }
+        let today = new Date().toLocaleDateString('ar-IQ');
+        list[index].payments.push({
+            amount: deduct,
+            date: today
+        });
+
         localStorage.setItem('debtorsList', JSON.stringify(list));
         renderDebtors();
         updateDebtsUI();
@@ -392,7 +439,7 @@ function renderExpenses() {
             <div class="list-item">
                 <p><strong>الفئة:</strong> ${item.category || 'غير محدد'}</p>
                 <p><strong>الصنف:</strong> ${item.type}</p>
-                <p><strong>المبلغ:</strong> ${item.amount} IQD</p>
+                <p><strong>المبلغ:</strong> ${formatMoney(item.amount)} IQD</p>
                 <p><strong>التاريخ:</strong> ${item.date}</p>
                 <p><strong>ملاحظات:</strong> ${item.notes}</p>
                 <p><strong>طريقة الدفع:</strong> ${item.method}</p>
@@ -444,21 +491,21 @@ function updateDebtsUI() {
     localStorage.setItem('totalDebtor', debtTotal);
 
     let totalCreditorEl = document.getElementById('total-creditor');
-    if(totalCreditorEl) totalCreditorEl.innerText = credTotal.toLocaleString() + ' IQD';
+    if(totalCreditorEl) totalCreditorEl.innerText = formatMoney(credTotal) + ' IQD';
     
     let totalDebtorEl = document.getElementById('total-debtor');
-    if(totalDebtorEl) totalDebtorEl.innerText = debtTotal.toLocaleString() + ' IQD';
+    if(totalDebtorEl) totalDebtorEl.innerText = formatMoney(debtTotal) + ' IQD';
 }
 
 function compareDebts() {
     let cred = parseFloat(localStorage.getItem('totalCreditor') || 0);
     let debt = parseFloat(localStorage.getItem('totalDebtor') || 0);
     
-    document.getElementById('comp-creditor').innerText = cred.toLocaleString();
-    document.getElementById('comp-debtor').innerText = debt.toLocaleString();
+    document.getElementById('comp-creditor').innerText = formatMoney(cred);
+    document.getElementById('comp-debtor').innerText = formatMoney(debt);
     
     let diff = Math.abs(debt - cred);
-    document.getElementById('comp-diff').innerText = diff.toLocaleString();
+    document.getElementById('comp-diff').innerText = formatMoney(diff);
     
     let statusEl = document.getElementById('comp-status');
     if (debt > cred) {
@@ -479,7 +526,7 @@ function saveDaily() {
     let expense = parseFloat(document.getElementById('daily-expense-input').value) || 0;
     
     let net = income - expense;
-    document.getElementById('daily-net').innerText = net.toLocaleString() + ' IQD';
+    document.getElementById('daily-net').innerText = formatMoney(net) + ' IQD';
     
     let list = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
     let date = new Date().toLocaleDateString('ar-IQ');
@@ -515,9 +562,9 @@ function renderDailySales() {
         container.innerHTML += `
             <div class="list-item">
                 <p><strong>التاريخ:</strong> ${item.date}</p>
-                <p><strong>الدخل:</strong> ${item.income} IQD</p>
-                <p><strong>المصروف:</strong> ${item.expense} IQD</p>
-                <p><strong>الصافي:</strong> ${item.net} IQD</p>
+                <p><strong>الدخل:</strong> ${formatMoney(item.income)} IQD</p>
+                <p><strong>المصروف:</strong> ${formatMoney(item.expense)} IQD</p>
+                <p><strong>الصافي:</strong> ${formatMoney(item.net)} IQD</p>
                 <div class="action-btns">
                     <button class="btn-small btn-edit" onclick="editDaily(${index})">تعديل</button>
                     <button class="btn-small btn-delete" onclick="deleteDaily(${index})">حذف</button>
@@ -554,7 +601,7 @@ function calculateMonthly(showAlert = true) {
     let totalExp = monthlyExp + fixedExp;
     let netMonthly = monthlyIncome - totalExp;
     
-    document.getElementById('monthly-net').innerText = netMonthly.toLocaleString() + ' IQD';
+    document.getElementById('monthly-net').innerText = formatMoney(netMonthly) + ' IQD';
     
     let profitPercent = monthlyIncome > 0 ? ((netMonthly / monthlyIncome) * 100).toFixed(1) : 0;
     let profitStatus = document.getElementById('profit-status');
