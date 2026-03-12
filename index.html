@@ -62,7 +62,7 @@
                     <p>📦 الدخل الصافي اليومي (الدخل ناقص المصروف):</p>
                     <p id="daily-net" style="color: green; font-weight: bold;">0 IQD</p>
                     <br>
-                    <button class="btn 3d-btn" onclick="saveDaily()">✅ حفظ اليومية</button>
+                    <button id="btn-save-daily" class="btn 3d-btn" onclick="saveDaily()">✅ حفظ اليومية</button>
                 </div>
                 <div class="card 3d-box highlight" style="margin-bottom: 20px;">
                     <h2>سجل المبيعات اليومية</h2>
@@ -71,13 +71,13 @@
 
                 <div class="card 3d-box">
                     <p>جمع تلقائي للدخل (الشهري)</p>
-                    <input type="number" id="monthly-income-input" placeholder="مجموع الدخل">
+                    <input type="number" id="monthly-income-input" placeholder="مجموع الدخل" readonly>
                     <br>
-                    <p>النتيجة الأسبوعية</p>
-                    <input type="number" id="weekly-result-input" placeholder="النتيجة الأسبوعية">
+                    <p>النتيجة الأسبوعية (جمع تلقائي)</p>
+                    <input type="number" id="weekly-result-input" placeholder="النتيجة الأسبوعية" readonly>
                     <br>
-                    <p>النتيجة الشهرية</p>
-                    <input type="number" id="monthly-result-input" placeholder="النتيجة الشهرية">
+                    <p>النتيجة الشهرية (جمع تلقائي)</p>
+                    <input type="number" id="monthly-result-input" placeholder="النتيجة الشهرية" readonly>
                     <br>
                     <p>المصروفات الشهرية (بضاعة، وغيرها، الخ)</p>
                     <input type="number" id="monthly-expenses-input" placeholder="المصروفات الشهرية">
@@ -98,7 +98,15 @@
             <section id="expenses" class="tab-content">
                 <div class="card 3d-box" style="margin-bottom: 20px;">
                     <h2>شراء بضاعة / مصروفات</h2>
-                    <input type="text" id="exp-type" placeholder="الصنف / النوع">
+                    
+                    <select id="exp-category" onchange="updateExpTypes()">
+                        <option value="ثابتة">مصروفات ثابتة</option>
+                        <option value="متغيرة">مصروفات متغيرة</option>
+                    </select>
+
+                    <input type="text" id="exp-type" list="exp-type-list" placeholder="الصنف / النوع (اختر أو اكتب)">
+                    <datalist id="exp-type-list"></datalist>
+
                     <input type="number" id="exp-amount" placeholder="المبلغ">
                     <input type="date" id="exp-date" placeholder="التاريخ">
                     <input type="text" id="exp-notes" placeholder="ملاحظات">
@@ -107,7 +115,7 @@
                         <option value="نقد">نقد</option>
                         <option value="دين">دين</option>
                     </select>
-                    <button class="btn 3d-btn" onclick="saveExpense()">حفظ المصروف</button>
+                    <button id="btn-save-expense" class="btn 3d-btn" onclick="saveExpense()">حفظ المصروف</button>
                 </div>
                 <div class="card 3d-box highlight">
                     <h2>سجل المصروفات</h2>
@@ -124,7 +132,7 @@
                     <input type="number" id="creditor-amount" placeholder="المبلغ">
                     <input type="text" id="cred-details" placeholder="التفاصيل / الملاحظات">
                     <input type="date" id="cred-date" placeholder="التاريخ">
-                    <button class="btn 3d-btn" onclick="saveCreditor()">حفظ الدائن</button>
+                    <button id="btn-save-creditor" class="btn 3d-btn" onclick="saveCreditor()">حفظ الدائن</button>
                 </div>
                 <div class="card 3d-box highlight" style="margin-bottom: 20px;">
                     <h2>مجموع الدين الكلي</h2>
@@ -146,7 +154,7 @@
                     <input type="number" id="debtor-amount" placeholder="المبلغ">
                     <input type="text" id="debt-details" placeholder="التفاصيل / الملاحظات">
                     <input type="date" id="debt-date" placeholder="التاريخ">
-                    <button class="btn 3d-btn" onclick="saveDebtor()">حفظ المدين</button>
+                    <button id="btn-save-debtor" class="btn 3d-btn" onclick="saveDebtor()">حفظ المدين</button>
                 </div>
                 <div class="card 3d-box highlight" style="margin-bottom: 20px;">
                     <h2>مجموع الدين الكلي</h2>
