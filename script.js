@@ -1,27 +1,87 @@
-// script.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCBCswyQbffEn5dVIXHjoJau4Htf3hcG5Y",
+    authDomain: "fffrrr-406d1.firebaseapp.com",
+    projectId: "fffrrr-406d1",
+    storageBucket: "fffrrr-406d1.firebasestorage.app",
+    messagingSenderId: "857903652305",
+    appId: "1:857903652305:web:771aeff515d2ec4b9814f0"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+async function getListFromDB(listName, defaultValue = []) {
+    try {
+        const docRef = doc(db, "storeData", listName);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return docSnap.data().value;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    return defaultValue;
+}
+
+async function saveListToDB(listName, value) {
+    try {
+        await setDoc(doc(db, "storeData", listName), { value: value });
+    } catch (e) {
+        console.error(e);
+    }
+}
+
 // ==================== 1. نظام الحماية (تسجيل الدخول) ====================
 const correctPIN = "1234";
 
-// متغيرات للتحكم في التعديل
 let editingDailyIndex = -1;
 let editingCreditorIndex = -1;
 let editingDebtorIndex = -1;
 let editingExpenseIndex = -1;
 
-// دالة لتنسيق الأرقام بفاصلة الآلاف
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installBtn = document.getElementById('install-btn');
+    if (installBtn) {
+        installBtn.style.display = 'block';
+        installBtn.addEventListener('click', () => {
+            installBtn.style.display = 'none';
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                deferredPrompt = null;
+            });
+        });
+    }
+});
+
 function formatMoney(num) {
     return Number(num).toLocaleString('en-US');
 }
 
-function checkPIN() {
+async function checkPIN() {
     const pin = document.getElementById('pin-input').value;
     if (pin === correctPIN) {
         document.getElementById('login-screen').classList.remove('active');
         document.getElementById('app-screen').classList.add('active');
-        loadAllLists();
-        loadDashboardData();
-        updateDebtsUI();
-        updateExpTypes(); // تحديث قوائم المصروفات
+        
+        Swal.fire({
+            title: 'جاري تحميل البيانات...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        await loadAllLists();
+        await loadDashboardData();
+        await updateDebtsUI();
+        updateExpTypes();
+
         Swal.fire({
             icon: 'success',
             title: 'أهلاً بك في شهد روز!',
@@ -45,7 +105,7 @@ function logout() {
 }
 
 // ==================== 2. التنقل بين الأقسام ====================
-function switchTab(tabId) {
+async function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
@@ -57,16 +117,16 @@ function switchTab(tabId) {
     event.currentTarget.classList.add('active');
 
     if(tabId === 'dashboard') {
-        loadDashboardData();
+        await loadDashboardData();
     } else if (tabId === 'comparison') {
-        compareDebts();
+        await compareDebts();
     }
 }
 
 // ==================== 3. لوحة القيادة والحسابات التلقائية ====================
-function loadDashboardData() {
-    let dailySales = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
-    let expList = JSON.parse(localStorage.getItem('expensesList') || '[]');
+async function loadDashboardData() {
+    let dailySales = await getListFromDB('dailySalesList', []);
+    let expList = await getListFromDB('expensesList', []);
 
     let totalSales = dailySales.reduce((sum, item) => sum + parseFloat(item.income || 0), 0);
     let totalDailyExp = dailySales.reduce((sum, item) => sum + parseFloat(item.expense || 0), 0);
@@ -89,9 +149,7 @@ function loadDashboardData() {
         marginElement.style.color = '#f28cae';
     }
 
-    // حساب أسبوعي وشهري بناءً على الطوابع الزمنية أو كل البيانات المتوفرة
     calculateTimeBasedSales(dailySales);
-
     calculateMonthly(false);
 }
 
@@ -117,7 +175,6 @@ function calculateTimeBasedSales(dailySales) {
                 monthlySales += inc;
             }
         } else {
-             // للبيانات القديمة التي لا تحتوي على timestamp
              monthlySales += inc;
              weeklySales += inc; 
         }
@@ -134,15 +191,15 @@ function calculateTimeBasedSales(dailySales) {
 
 // ==================== القوائم والسجلات ====================
 
-function loadAllLists() {
-    renderCreditors();
-    renderDebtors();
-    renderExpenses();
-    renderDailySales();
+async function loadAllLists() {
+    await renderCreditors();
+    await renderDebtors();
+    await renderExpenses();
+    await renderDailySales();
 }
 
 // ==================== قسم الدائن ====================
-function saveCreditor() {
+async function saveCreditor() {
     let name = document.getElementById('cred-name').value;
     let phone = document.getElementById('cred-phone').value;
     let address = document.getElementById('cred-address').value;
@@ -152,7 +209,7 @@ function saveCreditor() {
 
     if (!name && amount === 0) return alertError('الرجاء إدخال البيانات المطلوبة');
 
-    let list = JSON.parse(localStorage.getItem('creditorsList') || '[]');
+    let list = await getListFromDB('creditorsList', []);
     
     if (editingCreditorIndex > -1) {
         let payments = list[editingCreditorIndex].payments || [];
@@ -165,9 +222,9 @@ function saveCreditor() {
         alertSuccess('تم حفظ الدائن بنجاح');
     }
     
-    localStorage.setItem('creditorsList', JSON.stringify(list));
-    updateDebtsUI();
-    renderCreditors();
+    await saveListToDB('creditorsList', list);
+    await updateDebtsUI();
+    await renderCreditors();
 
     document.getElementById('cred-name').value = '';
     document.getElementById('cred-phone').value = '';
@@ -177,8 +234,8 @@ function saveCreditor() {
     document.getElementById('cred-date').value = '';
 }
 
-function renderCreditors() {
-    let list = JSON.parse(localStorage.getItem('creditorsList') || '[]');
+async function renderCreditors() {
+    let list = await getListFromDB('creditorsList', []);
     let container = document.getElementById('creditor-list');
     container.innerHTML = '';
     list.forEach((item, index) => {
@@ -208,8 +265,8 @@ function renderCreditors() {
     });
 }
 
-function editCreditor(index) {
-    let list = JSON.parse(localStorage.getItem('creditorsList') || '[]');
+async function editCreditor(index) {
+    let list = await getListFromDB('creditorsList', []);
     let item = list[index];
     document.getElementById('cred-name').value = item.name;
     document.getElementById('cred-phone').value = item.phone;
@@ -223,16 +280,16 @@ function editCreditor(index) {
     window.scrollTo(0, 0);
 }
 
-function deleteCreditor(index) {
-    let list = JSON.parse(localStorage.getItem('creditorsList') || '[]');
+async function deleteCreditor(index) {
+    let list = await getListFromDB('creditorsList', []);
     list.splice(index, 1);
-    localStorage.setItem('creditorsList', JSON.stringify(list));
-    renderCreditors();
-    updateDebtsUI();
+    await saveListToDB('creditorsList', list);
+    await renderCreditors();
+    await updateDebtsUI();
 }
 
 async function payCreditor(index) {
-    let list = JSON.parse(localStorage.getItem('creditorsList') || '[]');
+    let list = await getListFromDB('creditorsList', []);
     const { value: amount } = await Swal.fire({
         title: 'تسديد مبلغ (الواصل)',
         input: 'number',
@@ -256,15 +313,15 @@ async function payCreditor(index) {
             date: today
         });
 
-        localStorage.setItem('creditorsList', JSON.stringify(list));
-        renderCreditors();
-        updateDebtsUI();
+        await saveListToDB('creditorsList', list);
+        await renderCreditors();
+        await updateDebtsUI();
         alertSuccess('تم خصم المبلغ بنجاح');
     }
 }
 
 // ==================== قسم المدين ====================
-function saveDebtor() {
+async function saveDebtor() {
     let name = document.getElementById('debt-name').value;
     let phone = document.getElementById('debt-phone').value;
     let address = document.getElementById('debt-address').value;
@@ -274,7 +331,7 @@ function saveDebtor() {
 
     if (!name && amount === 0) return alertError('الرجاء إدخال البيانات المطلوبة');
 
-    let list = JSON.parse(localStorage.getItem('debtorsList') || '[]');
+    let list = await getListFromDB('debtorsList', []);
     
     if (editingDebtorIndex > -1) {
         let payments = list[editingDebtorIndex].payments || [];
@@ -287,9 +344,9 @@ function saveDebtor() {
         alertSuccess('تم حفظ المدين بنجاح');
     }
 
-    localStorage.setItem('debtorsList', JSON.stringify(list));
-    updateDebtsUI();
-    renderDebtors();
+    await saveListToDB('debtorsList', list);
+    await updateDebtsUI();
+    await renderDebtors();
 
     document.getElementById('debt-name').value = '';
     document.getElementById('debt-phone').value = '';
@@ -299,8 +356,8 @@ function saveDebtor() {
     document.getElementById('debt-date').value = '';
 }
 
-function renderDebtors() {
-    let list = JSON.parse(localStorage.getItem('debtorsList') || '[]');
+async function renderDebtors() {
+    let list = await getListFromDB('debtorsList', []);
     let container = document.getElementById('debtor-list');
     container.innerHTML = '';
     list.forEach((item, index) => {
@@ -330,8 +387,8 @@ function renderDebtors() {
     });
 }
 
-function editDebtor(index) {
-    let list = JSON.parse(localStorage.getItem('debtorsList') || '[]');
+async function editDebtor(index) {
+    let list = await getListFromDB('debtorsList', []);
     let item = list[index];
     document.getElementById('debt-name').value = item.name;
     document.getElementById('debt-phone').value = item.phone;
@@ -345,16 +402,16 @@ function editDebtor(index) {
     window.scrollTo(0, 0);
 }
 
-function deleteDebtor(index) {
-    let list = JSON.parse(localStorage.getItem('debtorsList') || '[]');
+async function deleteDebtor(index) {
+    let list = await getListFromDB('debtorsList', []);
     list.splice(index, 1);
-    localStorage.setItem('debtorsList', JSON.stringify(list));
-    renderDebtors();
-    updateDebtsUI();
+    await saveListToDB('debtorsList', list);
+    await renderDebtors();
+    await updateDebtsUI();
 }
 
 async function payDebtor(index) {
-    let list = JSON.parse(localStorage.getItem('debtorsList') || '[]');
+    let list = await getListFromDB('debtorsList', []);
     const { value: amount } = await Swal.fire({
         title: 'تسديد مبلغ (الواصل)',
         input: 'number',
@@ -378,9 +435,9 @@ async function payDebtor(index) {
             date: today
         });
 
-        localStorage.setItem('debtorsList', JSON.stringify(list));
-        renderDebtors();
-        updateDebtsUI();
+        await saveListToDB('debtorsList', list);
+        await renderDebtors();
+        await updateDebtsUI();
         alertSuccess('تم خصم المبلغ بنجاح');
     }
 }
@@ -397,7 +454,7 @@ function updateExpTypes() {
     }
 }
 
-function saveExpense() {
+async function saveExpense() {
     let category = document.getElementById('exp-category').value;
     let type = document.getElementById('exp-type').value;
     let amount = parseFloat(document.getElementById('exp-amount').value) || 0;
@@ -407,7 +464,7 @@ function saveExpense() {
 
     if (!type && amount === 0) return alertError('الرجاء إدخال البيانات المطلوبة');
 
-    let list = JSON.parse(localStorage.getItem('expensesList') || '[]');
+    let list = await getListFromDB('expensesList', []);
     
     if (editingExpenseIndex > -1) {
         list[editingExpenseIndex] = { category, type, amount, date, notes, method };
@@ -419,9 +476,9 @@ function saveExpense() {
         alertSuccess('تم حفظ المصروف بنجاح');
     }
 
-    localStorage.setItem('expensesList', JSON.stringify(list));
-    renderExpenses();
-    loadDashboardData(); 
+    await saveListToDB('expensesList', list);
+    await renderExpenses();
+    await loadDashboardData(); 
 
     document.getElementById('exp-type').value = '';
     document.getElementById('exp-amount').value = '';
@@ -430,8 +487,8 @@ function saveExpense() {
     document.getElementById('exp-method').value = '';
 }
 
-function renderExpenses() {
-    let list = JSON.parse(localStorage.getItem('expensesList') || '[]');
+async function renderExpenses() {
+    let list = await getListFromDB('expensesList', []);
     let container = document.getElementById('expenses-list');
     container.innerHTML = '';
     list.forEach((item, index) => {
@@ -452,8 +509,8 @@ function renderExpenses() {
     });
 }
 
-function editExpense(index) {
-    let list = JSON.parse(localStorage.getItem('expensesList') || '[]');
+async function editExpense(index) {
+    let list = await getListFromDB('expensesList', []);
     let item = list[index];
     
     if(item.category) {
@@ -471,24 +528,24 @@ function editExpense(index) {
     window.scrollTo(0, 0);
 }
 
-function deleteExpense(index) {
-    let list = JSON.parse(localStorage.getItem('expensesList') || '[]');
+async function deleteExpense(index) {
+    let list = await getListFromDB('expensesList', []);
     list.splice(index, 1);
-    localStorage.setItem('expensesList', JSON.stringify(list));
-    renderExpenses();
-    loadDashboardData();
+    await saveListToDB('expensesList', list);
+    await renderExpenses();
+    await loadDashboardData();
 }
 
 // ==================== تحديث واجهة الديون والمقارنة ====================
-function updateDebtsUI() {
-    let credList = JSON.parse(localStorage.getItem('creditorsList') || '[]');
-    let debtList = JSON.parse(localStorage.getItem('debtorsList') || '[]');
+async function updateDebtsUI() {
+    let credList = await getListFromDB('creditorsList', []);
+    let debtList = await getListFromDB('debtorsList', []);
 
     let credTotal = credList.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
     let debtTotal = debtList.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
     
-    localStorage.setItem('totalCreditor', credTotal);
-    localStorage.setItem('totalDebtor', debtTotal);
+    await saveListToDB('totalCreditor', credTotal);
+    await saveListToDB('totalDebtor', debtTotal);
 
     let totalCreditorEl = document.getElementById('total-creditor');
     if(totalCreditorEl) totalCreditorEl.innerText = formatMoney(credTotal) + ' IQD';
@@ -497,9 +554,9 @@ function updateDebtsUI() {
     if(totalDebtorEl) totalDebtorEl.innerText = formatMoney(debtTotal) + ' IQD';
 }
 
-function compareDebts() {
-    let cred = parseFloat(localStorage.getItem('totalCreditor') || 0);
-    let debt = parseFloat(localStorage.getItem('totalDebtor') || 0);
+async function compareDebts() {
+    let cred = parseFloat(await getListFromDB('totalCreditor', 0));
+    let debt = parseFloat(await getListFromDB('totalDebtor', 0));
     
     document.getElementById('comp-creditor').innerText = formatMoney(cred);
     document.getElementById('comp-debtor').innerText = formatMoney(debt);
@@ -521,19 +578,18 @@ function compareDebts() {
 }
 
 // ==================== قسم المبيعات واليومية ====================
-function saveDaily() {
+async function saveDaily() {
     let income = parseFloat(document.getElementById('daily-income-input').value) || 0;
     let expense = parseFloat(document.getElementById('daily-expense-input').value) || 0;
     
     let net = income - expense;
     document.getElementById('daily-net').innerText = formatMoney(net) + ' IQD';
     
-    let list = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
+    let list = await getListFromDB('dailySalesList', []);
     let date = new Date().toLocaleDateString('ar-IQ');
     let timestamp = Date.now();
     
     if (editingDailyIndex > -1) {
-        // الحفاظ على التاريخ القديم عند التعديل
         let oldDate = list[editingDailyIndex].date;
         let oldTimestamp = list[editingDailyIndex].timestamp || timestamp;
         list[editingDailyIndex] = { income, expense, net, date: oldDate, timestamp: oldTimestamp };
@@ -545,17 +601,17 @@ function saveDaily() {
         alertSuccess('تم حفظ اليومية بنجاح');
     }
     
-    localStorage.setItem('dailySalesList', JSON.stringify(list));
+    await saveListToDB('dailySalesList', list);
 
-    renderDailySales();
-    loadDashboardData();
+    await renderDailySales();
+    await loadDashboardData();
 
     document.getElementById('daily-income-input').value = '';
     document.getElementById('daily-expense-input').value = '';
 }
 
-function renderDailySales() {
-    let list = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
+async function renderDailySales() {
+    let list = await getListFromDB('dailySalesList', []);
     let container = document.getElementById('daily-sales-list');
     container.innerHTML = '';
     list.forEach((item, index) => {
@@ -574,8 +630,8 @@ function renderDailySales() {
     });
 }
 
-function editDaily(index) {
-    let list = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
+async function editDaily(index) {
+    let list = await getListFromDB('dailySalesList', []);
     let item = list[index];
     document.getElementById('daily-income-input').value = item.income;
     document.getElementById('daily-expense-input').value = item.expense;
@@ -585,12 +641,12 @@ function editDaily(index) {
     window.scrollTo(0, 0);
 }
 
-function deleteDaily(index) {
-    let list = JSON.parse(localStorage.getItem('dailySalesList') || '[]');
+async function deleteDaily(index) {
+    let list = await getListFromDB('dailySalesList', []);
     list.splice(index, 1);
-    localStorage.setItem('dailySalesList', JSON.stringify(list));
-    renderDailySales();
-    loadDashboardData();
+    await saveListToDB('dailySalesList', list);
+    await renderDailySales();
+    await loadDashboardData();
 }
 
 function calculateMonthly(showAlert = true) {
@@ -638,3 +694,24 @@ function alertError(msg) {
         confirmButtonColor: '#f28cae'
     });
 }
+
+// ربط الدوال بنافذة المتصفح لتعمل مع HTML
+window.checkPIN = checkPIN;
+window.logout = logout;
+window.switchTab = switchTab;
+window.saveDaily = saveDaily;
+window.calculateMonthly = calculateMonthly;
+window.updateExpTypes = updateExpTypes;
+window.saveExpense = saveExpense;
+window.saveCreditor = saveCreditor;
+window.saveDebtor = saveDebtor;
+window.payCreditor = payCreditor;
+window.editCreditor = editCreditor;
+window.deleteCreditor = deleteCreditor;
+window.payDebtor = payDebtor;
+window.editDebtor = editDebtor;
+window.deleteDebtor = deleteDebtor;
+window.editExpense = editExpense;
+window.deleteExpense = deleteExpense;
+window.editDaily = editDaily;
+window.deleteDaily = deleteDaily;
