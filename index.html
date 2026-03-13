@@ -4,17 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>شهد روز - إدارة المتجر</title>
+    <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="style.css">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js');
+            });
+        }
+    </script>
 </head>
 <body>
 
     <div id="login-screen" class="screen active">
         <div class="login-box 3d-box">
             <h1 class="brand-title"><i class="fa-solid fa-leaf"></i> شهد روز</h1>
-            <p>الرجاء إدخال رمز PIN (الرمز الافتراضي: 1234)</p>
+            <button id="install-btn" class="btn 3d-btn" style="display: none; background-color: #4caf50; color: white; margin-bottom: 15px;">تثبيت التطبيق</button>
+            <p>الرجاء إدخال رمز PIN</p>
             <input type="password" id="pin-input" maxlength="4" placeholder="****">
             <button onclick="checkPIN()" class="btn 3d-btn">دخول</button>
         </div>
@@ -193,6 +202,6 @@
         </nav>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
